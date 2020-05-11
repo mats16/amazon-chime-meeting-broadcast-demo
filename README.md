@@ -13,6 +13,7 @@ The input for the container is a file called `container.env`. You create this fi
  
 * `MEETING_URL`: Chime Meeting URL (without any spaces in it)
   * Example(If you want to record Chime): `https://app.chime.aws/portal/<your Meeting ID here>`
+    * or `CHIME_MEETING_PIN`
   * Example(Hosted Chime SDK Demo URL): `<Hosted Chime URL>/?m=<Meeting ID>&record=true`
 * `RTMP_URL`: the URL of the RTMP endpoint,
   * Twitch example: `rtmp://live.twitch.tv/app/<stream key>`

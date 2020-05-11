@@ -25,7 +25,7 @@ audio_channels = os.getenv('AUDIO_CHANNELS', 2)
 
 rtmp_url = os.getenv('RTMP_URL')
 meeting_pin = os.getenv('MEETING_PIN', None)
-if chime_meeting_pin:
+if meeting_pin:
     browser_url = f'https://app.chime.aws/portal/{meeting_pin}'
 else:
     browser_url = os.getenv('BROWSER_URL')

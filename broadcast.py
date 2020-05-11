@@ -31,6 +31,10 @@ if meeting_pin:
     browser_url = f'https://app.chime.aws/portal/{meeting_pin}'
 else:
     browser_url = os.getenv('BROWSER_URL')
+if browser_url.startswith('https://app.chime.aws/portal/'):
+    is_chime = True
+else:
+    is_chime = False
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -57,7 +61,7 @@ if __name__=='__main__':
     wait = WebDriverWait(driver, 10)
     wait.until(visible((By.ID, 'app')))
 
-    if browser_url.startswith('https://app.chime.aws/portal/'):
+    if is_chime:
         for entry in driver.get_log('browser'):
             print(entry)
             if entry.get('message', '').endswith('"Invalid meeting ID undefined; allowing fallthrough to failure."'):
@@ -108,7 +112,7 @@ if __name__=='__main__':
     out.run_async(pipe_stdin=True)
 
     while True:
-        if browser_url.startswith('https://app.chime.aws/portal/') and driver.current_url == 'https://app.chime.aws/portal/ended':
+        if is_chime and driver.current_url == 'https://app.chime.aws/portal/ended':
             logger.info('This meeting is ended.')
             break
         else:

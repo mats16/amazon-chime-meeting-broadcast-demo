@@ -1,12 +1,14 @@
+import sys
 import os
 import logging
 import subprocess
 from time import sleep
 from selenium import webdriver
-from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support.expected_conditions import visibility_of_element_located as visible
+from selenium.webdriver.common.by import By
 from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 from pyvirtualdisplay import Display
 import chromedriver_binary
 import ffmpeg
@@ -42,15 +44,25 @@ options.add_argument(f'---window-size={screen_width},{screen_height}')
 options.add_argument('--start-fullscreen')
 options.add_experimental_option("excludeSwitches", ['enable-automation'])
 
+capabilities = DesiredCapabilities.CHROME
+capabilities['loggingPrefs'] = { 'browser':'ALL' }
+
 
 if __name__=='__main__':
     display.start()
     subprocess.Popen('pulseaudio', shell=True, env={'DISPLAY': f':{display.display}'})
 
-    driver = webdriver.Chrome(chrome_options=options)
+    driver = webdriver.Chrome(chrome_options=options, desired_capabilities=capabilities)
     driver.get(browser_url)
     wait = WebDriverWait(driver, 10)
     wait.until(visible((By.ID, 'app')))
+
+    if browser_url.startswith('https://app.chime.aws/portal/'):
+        for entry in driver.get_log('browser'):
+            print(entry)
+            if entry.get('message', '').endswith('"Invalid meeting ID undefined; allowing fallthrough to failure."'):
+                logger.info('Invalid meeting ID undefined; allowing fallthrough to failure.')
+                sys.exit(0)
 
     # Move mouse out of the way so it doesn't trigger the "pause" overlay on the video tile
     actions = ActionChains(driver)
@@ -96,10 +108,11 @@ if __name__=='__main__':
     out.run_async(pipe_stdin=True)
 
     while True:
-        if meeting_pin and driver.current_url == 'https://app.chime.aws/portal/ended':
+        if browser_url.startswith('https://app.chime.aws/portal/') and driver.current_url == 'https://app.chime.aws/portal/ended':
             logger.info('This meeting is ended.')
             break
         else:
             sleep(5)
     driver.quit()
     display.stop()
+    sys.exit(0)

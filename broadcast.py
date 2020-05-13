@@ -4,9 +4,7 @@ import logging
 import subprocess
 from time import sleep
 from selenium import webdriver
-from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support.expected_conditions import visibility_of_element_located as visible
-from selenium.webdriver.common.by import By
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 from pyvirtualdisplay import Display
@@ -61,14 +59,10 @@ if __name__=='__main__':
     driver = webdriver.Chrome(chrome_options=options, desired_capabilities=capabilities)
     driver.get(browser_url)
 
-    if is_chime:
-        wait = WebDriverWait(driver, 10)
-        wait.until(visible((By.ID, 'app')))
-        # Move mouse out of the way so it doesn't trigger the "pause" overlay on the video tile
-        actions = ActionChains(driver)
-        actions.move_to_element(driver.find_element_by_id('app'))
-        actions.move_by_offset(screen_width/2, screen_height/2)
-        actions.perform()
+    # Move mouse out of the way so it doesn't trigger the "pause" overlay on the video tile
+    actions = ActionChains(driver)
+    actions.move_by_offset(0, screen_height-1)
+    actions.perform()
     
     video_stream = ffmpeg.input(
         f':{display.display}',

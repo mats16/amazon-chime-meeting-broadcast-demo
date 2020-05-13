@@ -7,6 +7,7 @@ ENV CHROME_VERSION=80.0.3987.16
 RUN adduser --disabled-password --system broadcast && \
     apt-get update && \
     apt-get install -y \
+        fonts-noto-cjk \
         pulseaudio \
         xvfb \
         chromium=${CHROME_VERSION}* \

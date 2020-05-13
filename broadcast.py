@@ -17,13 +17,10 @@ screen_width = os.getenv('SCREEN_WIDTH', 1920)
 screen_height = os.getenv('SCREEN_HEIGHT', 1080)
 screen_resolution = f'{screen_width}x{screen_height}'
 color_depth = os.getenv('COLOR_DEPTH', 24)
-video_bitrate = os.getenv('VIDEO_BITRATE', None)
-if video_bitrate:
-    video_minrate = video_maxrate = video_bitrate
-else:
-    video_minrate = os.getenv('VIDEO_MINRATE', '3000k')
-    video_maxrate = os.getenv('VIDEO_MAXRATE', '6000k')
-video_bufsize = os.getenv('VIDEO_BUFSIZE', '12000k')
+video_bitrate = os.getenv('VIDEO_BITRATE', '4500k')
+#video_minrate = os.getenv('VIDEO_MINRATE', '3000k')
+#video_maxrate = os.getenv('VIDEO_MAXRATE', '6000k')
+#video_bufsize = os.getenv('VIDEO_BUFSIZE', '12000k')
 video_framerate = os.getenv('VIDEO_FRAMERATE', 30)
 video_gop = video_framerate * 2
 audio_bitrate = os.getenv('AUDIO_BITRATE', '128k')
@@ -97,9 +94,10 @@ if __name__=='__main__':
         vprofile='main',
         preset='veryfast',
         x264opts='nal-hrd=cbr:no-scenecut',
-        minrate=video_minrate,
-        maxrate=video_maxrate,
-        bufsize=video_bufsize,
+        video_bitrate=video_bitrate,
+        #minrate=video_minrate,
+        #maxrate=video_maxrate,
+        #bufsize=video_bufsize,
         r=video_framerate,
         g=video_gop,
         filter_complex='adelay=delays=2000|2000',

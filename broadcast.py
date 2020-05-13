@@ -17,8 +17,13 @@ screen_width = os.getenv('SCREEN_WIDTH', 1920)
 screen_height = os.getenv('SCREEN_HEIGHT', 1080)
 screen_resolution = f'{screen_width}x{screen_height}'
 color_depth = os.getenv('COLOR_DEPTH', 24)
-video_bitrate = os.getenv('VIDEO_BITRATE', '4500k')
-video_bufsize = os.getenv('VIDEO_BUFSIZE', '9000k')
+video_bitrate = os.getenv('VIDEO_BITRATE', None)
+if video_bitrate:
+    video_minrate = video_maxrate = video_bitrate
+else:
+    video_minrate = os.getenv('VIDEO_MINRATE', '3000k')
+    video_maxrate = os.getenv('VIDEO_MAXRATE', '6000k')
+video_bufsize = os.getenv('VIDEO_BUFSIZE', '12000k')
 video_framerate = os.getenv('VIDEO_FRAMERATE', 30)
 video_gop = video_framerate * 2
 audio_bitrate = os.getenv('AUDIO_BITRATE', '128k')
@@ -53,26 +58,20 @@ capabilities['loggingPrefs'] = { 'browser':'ALL' }
 
 
 if __name__=='__main__':
+    subprocess.Popen('pulseaudio', shell=True)
     display.start()
-    subprocess.Popen('pulseaudio', shell=True, env={'DISPLAY': f':{display.display}'})
 
     driver = webdriver.Chrome(chrome_options=options, desired_capabilities=capabilities)
     driver.get(browser_url)
-    wait = WebDriverWait(driver, 10)
-    wait.until(visible((By.ID, 'app')))
 
     if is_chime:
-        for entry in driver.get_log('browser'):
-            print(entry)
-            if entry.get('message', '').endswith('"Invalid meeting ID undefined; allowing fallthrough to failure."'):
-                logger.info('Invalid meeting ID undefined; allowing fallthrough to failure.')
-                sys.exit(0)
-
-    # Move mouse out of the way so it doesn't trigger the "pause" overlay on the video tile
-    actions = ActionChains(driver)
-    actions.move_to_element(driver.find_element_by_id('app'))
-    actions.move_by_offset(screen_width/2, screen_height/2)
-    actions.perform()
+        wait = WebDriverWait(driver, 10)
+        wait.until(visible((By.ID, 'app')))
+        # Move mouse out of the way so it doesn't trigger the "pause" overlay on the video tile
+        actions = ActionChains(driver)
+        actions.move_to_element(driver.find_element_by_id('app'))
+        actions.move_by_offset(screen_width/2, screen_height/2)
+        actions.perform()
     
     video_stream = ffmpeg.input(
         f':{display.display}',
@@ -89,8 +88,8 @@ if __name__=='__main__':
         thread_queue_size=1024)
         
     out = ffmpeg.output(
-        audio_stream,
         video_stream,
+        audio_stream,
         rtmp_url,
         f='flv',
         vcodec='libx264',
@@ -98,12 +97,12 @@ if __name__=='__main__':
         vprofile='main',
         preset='veryfast',
         x264opts='nal-hrd=cbr:no-scenecut',
-        minrate=video_bitrate,
-        maxrate=video_bitrate,
+        minrate=video_minrate,
+        maxrate=video_maxrate,
         bufsize=video_bufsize,
         r=video_framerate,
         g=video_gop,
-        filter_complex='adelay=delays=1000|1000',
+        filter_complex='adelay=delays=2000|2000',
         acodec='aac',
         audio_bitrate=audio_bitrate,
         ac=audio_channels,
@@ -112,11 +111,19 @@ if __name__=='__main__':
     out.run_async(pipe_stdin=True)
 
     while True:
-        if is_chime and driver.current_url == 'https://app.chime.aws/portal/ended':
-            logger.info('This meeting is ended.')
-            break
-        else:
-            sleep(5)
+        if is_chime:
+            if driver.current_url == 'https://app.chime.aws/portal/ended':
+                logger.info('This meeting is ended.')
+                break
+            else:
+                try:
+                    title = driver.find_element_by_class_name('FullScreenOverlay__title')
+                except Exception as e:
+                    title = None
+                if title and title.text == 'Meeting ID not found':
+                    logger.info(title.text)
+                    break
+        sleep(5)
     driver.quit()
     display.stop()
     sys.exit(0)

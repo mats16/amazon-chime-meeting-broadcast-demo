@@ -24,6 +24,8 @@ video_gop = video_framerate * 2
 audio_bitrate = os.getenv('AUDIO_BITRATE', '128k')
 audio_samplerate = os.getenv('AUDIO_BITRATE', 44100)
 audio_channels = os.getenv('AUDIO_CHANNELS', 2)
+audio_delays = os.getenv('AUDIO_DELAYS', '1850')
+thread_num = os.getenv('THREAD_NUM', 4)
 
 rtmp_url = os.getenv('RTMP_URL')
 meeting_pin = os.getenv('MEETING_PIN', None)
@@ -94,11 +96,13 @@ if __name__=='__main__':
         #bufsize=video_bufsize,
         r=video_framerate,
         g=video_gop,
-        filter_complex='adelay=delays=2000|2000',
+        filter_complex=f'adelay=delays={audio_delays}|{audio_delays}',
         acodec='aac',
         audio_bitrate=audio_bitrate,
         ac=audio_channels,
         ar=audio_samplerate,
+        threads=thread_num,
+        loglevel='error',
     )
     out.run_async(pipe_stdin=True)
 

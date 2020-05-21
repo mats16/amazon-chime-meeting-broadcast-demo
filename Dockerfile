@@ -30,4 +30,4 @@ COPY docker-entrypoint.sh /usr/local/bin/
 COPY broadcast.py ./
 
 ENTRYPOINT ["docker-entrypoint.sh"]
-CMD ["python3", "broadcast.py"]
+CMD ["python3", "-u", "broadcast.py"]

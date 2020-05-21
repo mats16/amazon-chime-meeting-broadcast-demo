@@ -24,7 +24,7 @@ video_gop = video_framerate * 2
 audio_bitrate = os.getenv('AUDIO_BITRATE', '128k')
 audio_samplerate = os.getenv('AUDIO_BITRATE', 44100)
 audio_channels = os.getenv('AUDIO_CHANNELS', 2)
-audio_delays = os.getenv('AUDIO_DELAYS', '1000')
+audio_delays = os.getenv('AUDIO_DELAYS', '1800')
 thread_num = os.getenv('THREAD_NUM', 4)
 
 rtmp_url = os.getenv('RTMP_URL')
@@ -106,6 +106,8 @@ if __name__=='__main__':
     out.run_async(pipe_stdin=True)
 
     while True:
+        for entry in driver.get_log('browser'):
+            logger.info(entry)
         if is_chime:
             if driver.current_url == 'https://app.chime.aws/portal/ended':
                 logger.info('This meeting is ended.')

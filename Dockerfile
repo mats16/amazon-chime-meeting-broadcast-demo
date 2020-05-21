@@ -19,12 +19,15 @@ RUN adduser --disabled-password --system broadcast && \
     rm -rf /var/lib/apt/lists/* && \
     pip install chromedriver-binary==${CHROME_VERSION}
 
-COPY pulse/default.pa /etc/pulse/default.pa
 COPY requirements.txt ./
 RUN pip install -r ./requirements.txt
 
 USER broadcast
 WORKDIR /home/broadcast
+RUN mkdir -p .pulse && echo "default-server = 127.0.0.1" > .pulse/client.conf
+
+COPY docker-entrypoint.sh /usr/local/bin/
 COPY broadcast.py ./
 
-CMD ["python3", "broadcast.py"]
+ENTRYPOINT ["docker-entrypoint.sh"]
+CMD ["python3", "-u", "broadcast.py"]

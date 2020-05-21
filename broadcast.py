@@ -57,7 +57,7 @@ capabilities['loggingPrefs'] = { 'browser':'ALL' }
 if __name__=='__main__':
     display.start()
 
-    driver = webdriver.Chrome(chrome_options=options, desired_capabilities=capabilities)
+    driver = webdriver.Chrome(options=options, desired_capabilities=capabilities)
     driver.get(browser_url)
 
     # Move mouse out of the way so it doesn't trigger the "pause" overlay on the video tile

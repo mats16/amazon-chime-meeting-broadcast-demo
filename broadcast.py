@@ -24,7 +24,7 @@ video_gop = video_framerate * 2
 audio_bitrate = os.getenv('AUDIO_BITRATE', '128k')
 audio_samplerate = os.getenv('AUDIO_BITRATE', 44100)
 audio_channels = os.getenv('AUDIO_CHANNELS', 2)
-audio_delays = os.getenv('AUDIO_DELAYS', '1850')
+audio_delays = os.getenv('AUDIO_DELAYS', '1000')
 thread_num = os.getenv('THREAD_NUM', 4)
 
 rtmp_url = os.getenv('RTMP_URL')
@@ -55,7 +55,6 @@ capabilities['loggingPrefs'] = { 'browser':'ALL' }
 
 
 if __name__=='__main__':
-    subprocess.Popen('pulseaudio', shell=True)
     display.start()
 
     driver = webdriver.Chrome(chrome_options=options, desired_capabilities=capabilities)

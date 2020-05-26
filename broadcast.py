@@ -7,9 +7,12 @@ from selenium import webdriver
 from selenium.webdriver.support.expected_conditions import visibility_of_element_located as visible
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
+from selenium.common.exceptions import WebDriverException
 from pyvirtualdisplay import Display
 import chromedriver_binary
 import ffmpeg
+import uuid
+import boto3
 
 screen_width = os.getenv('SCREEN_WIDTH', 1920)
 screen_height = os.getenv('SCREEN_HEIGHT', 1080)
@@ -27,16 +30,24 @@ audio_channels = os.getenv('AUDIO_CHANNELS', 2)
 audio_delays = os.getenv('AUDIO_DELAYS', '1800')
 thread_num = os.getenv('THREAD_NUM', 4)
 
-rtmp_url = os.getenv('RTMP_URL')
 meeting_pin = os.getenv('MEETING_PIN', None)
 if meeting_pin:
-    browser_url = f'https://app.chime.aws/portal/{meeting_pin}'
+    src_url = f'https://app.chime.aws/portal/{meeting_pin}'
 else:
-    browser_url = os.getenv('BROWSER_URL')
-if browser_url.startswith('https://app.chime.aws/portal/'):
+    src_url = os.getenv('SRC_URL')
+if src_url.startswith('https://app.chime.aws/portal/'):
     is_chime = True
 else:
     is_chime = False
+dst_url = os.getenv('DST_URL')
+if dst_url.startswith('rtmp://'):
+    dst_type = 'rtmp'
+elif dst_url.startswith('s3://'):
+    dst_type = 's3'
+    s3_bucket = dst_url.split('/')[2]
+    s3_prefix = '/'.join(dst_url.split('/')[3:]).rstrip('/')
+
+job_name = os.getenv('JOB_NAME', str(uuid.uuid4()))
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -58,7 +69,7 @@ if __name__=='__main__':
     display.start()
 
     driver = webdriver.Chrome(options=options, desired_capabilities=capabilities)
-    driver.get(browser_url)
+    driver.get(src_url)
 
     # Move mouse out of the way so it doesn't trigger the "pause" overlay on the video tile
     actions = ActionChains(driver)
@@ -78,38 +89,74 @@ if __name__=='__main__':
         f='pulse',
         ac=2,
         thread_queue_size=1024)
-        
-    out = ffmpeg.output(
-        video_stream,
-        audio_stream,
-        rtmp_url,
-        f='flv',
-        vcodec='libx264',
-        pix_fmt='yuv420p',
-        vprofile='main',
-        preset='veryfast',
-        x264opts='nal-hrd=cbr:no-scenecut',
-        video_bitrate=video_bitrate,
-        #minrate=video_minrate,
-        #maxrate=video_maxrate,
-        #bufsize=video_bufsize,
-        r=video_framerate,
-        g=video_gop,
-        filter_complex=f'adelay=delays={audio_delays}|{audio_delays}',
-        acodec='aac',
-        audio_bitrate=audio_bitrate,
-        ac=audio_channels,
-        ar=audio_samplerate,
-        threads=thread_num,
-        loglevel='error',
-    )
-    out.run_async(pipe_stdin=True)
+
+    if dst_type == 'rtmp':
+        out = ffmpeg.output(
+            video_stream,
+            audio_stream,
+            dst_url,
+            f='flv',
+            vcodec='libx264',
+            pix_fmt='yuv420p',
+            vprofile='main',
+            preset='veryfast',
+            x264opts='nal-hrd=cbr:no-scenecut',
+            video_bitrate=video_bitrate,
+            #minrate=video_minrate,
+            #maxrate=video_maxrate,
+            #bufsize=video_bufsize,
+            r=video_framerate,
+            g=video_gop,
+            filter_complex=f'adelay=delays={audio_delays}|{audio_delays}',
+            acodec='aac',
+            audio_bitrate=audio_bitrate,
+            ac=audio_channels,
+            ar=audio_samplerate,
+            threads=thread_num,
+            loglevel='error',
+        )
+    elif dst_type == 's3':
+        tmp_file = f'/tmp/{job_name}.mp4'
+        out = ffmpeg.output(
+            video_stream,
+            audio_stream,
+            tmp_file,
+            f='mp4',
+            vcodec='libx264',
+            pix_fmt='yuv420p',
+            vprofile='main',
+            preset='veryfast',
+            x264opts='nal-hrd=cbr:no-scenecut',
+            video_bitrate=video_bitrate,
+            #minrate=video_minrate,
+            #maxrate=video_maxrate,
+            #bufsize=video_bufsize,
+            r=video_framerate,
+            g=video_gop,
+            filter_complex=f'adelay=delays={audio_delays}|{audio_delays}',
+            acodec='aac',
+            audio_bitrate=audio_bitrate,
+            ac=audio_channels,
+            ar=audio_samplerate,
+            threads=thread_num,
+            loglevel='error',
+        )
+    process = out.run_async(pipe_stdin=True)
 
     while True:
+        # check console log
         for entry in driver.get_log('browser'):
             logger.info(entry)
+        # check page crash
+        try:
+            current_url = driver.current_url
+        except WebDriverException as e:
+            logger.error(e)
+            driver.get(src_url)
+            current_url = src_url
+        # check chime meeting status
         if is_chime:
-            if driver.current_url == 'https://app.chime.aws/portal/ended':
+            if current_url == 'https://app.chime.aws/portal/ended':
                 logger.info('This meeting is ended.')
                 break
             else:
@@ -121,6 +168,17 @@ if __name__=='__main__':
                     logger.info(title.text)
                     break
         sleep(5)
+    try:
+        process.communicate(str.encode('q'), timeout=10)
+    except subprocess.TimeoutExpired:
+        process.terminate()
     driver.quit()
     display.stop()
+    if dst_type == 's3':
+        client = boto3.client('s3')
+        with open(tmp_file, 'rb') as f:
+            res = client.put_object(
+                Body=f,
+                Bucket=s3_bucket,
+                Key=f'{s3_prefix}/{job_name}.mp4')
     sys.exit(0)

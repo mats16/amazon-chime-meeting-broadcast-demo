@@ -146,13 +146,13 @@ if __name__=='__main__':
     while True:
         for entry in driver.get_log('browser'):
             logger.info(entry)
+        try:
+            current_url = driver.current_url
+        except WebDriverException as e:
+            logger.error(e)
+            driver.get(src_url)
+            current_url = src_url
         if is_chime:
-            try:
-                current_url = driver.current_url
-            except WebDriverException as e:
-                logger.error(e)
-                driver.get(src_url)
-                current_url = src_url
             if current_url == 'https://app.chime.aws/portal/ended':
                 logger.info('This meeting is ended.')
                 break

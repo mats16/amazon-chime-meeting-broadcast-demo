@@ -144,14 +144,17 @@ if __name__=='__main__':
     process = out.run_async(pipe_stdin=True)
 
     while True:
+        # check console log
         for entry in driver.get_log('browser'):
             logger.info(entry)
+        # check page crash
         try:
             current_url = driver.current_url
         except WebDriverException as e:
             logger.error(e)
             driver.get(src_url)
             current_url = src_url
+        # check chime meeting status
         if is_chime:
             if current_url == 'https://app.chime.aws/portal/ended':
                 logger.info('This meeting is ended.')

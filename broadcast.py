@@ -7,6 +7,7 @@ from selenium import webdriver
 from selenium.webdriver.support.expected_conditions import visibility_of_element_located as visible
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
+from selenium.common.exceptions import WebDriverException
 from pyvirtualdisplay import Display
 import chromedriver_binary
 import ffmpeg
@@ -146,7 +147,13 @@ if __name__=='__main__':
         for entry in driver.get_log('browser'):
             logger.info(entry)
         if is_chime:
-            if driver.current_url == 'https://app.chime.aws/portal/ended':
+            try:
+                current_url = driver.current_url
+            except WebDriverException as e:
+                logger.error(e)
+                driver.get(src_url)
+                current_url = src_url
+            if current_url == 'https://app.chime.aws/portal/ended':
                 logger.info('This meeting is ended.')
                 break
             else:

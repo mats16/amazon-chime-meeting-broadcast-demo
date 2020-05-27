@@ -21,28 +21,29 @@ The input for the container is a file called `container.env`. You create this fi
 
 ### Other parameters
 
-- `MEETING_PIN`: You can use this param instead of `SRC_URL`.
+* `MEETING_PIN`: You can use this param instead of `SRC_URL`.
 
-- `SCREEN_WIDTH`
-    - Default: 1920
-- `SCREEN_HEIGHT`
-    - Default: 1080
-- `COLOR_DEPTH`
-    - Default: 24
-- `VIDEO_BITRATE`
-    - Default: 4500k
-- `VIDEO_FRAMERATE`
-    - Default: 30
-- `AUDIO_BITRATE`
-    - Default: 128k
-- `AUDIO_SAMPLERATE`
-    - Default: 44100
-- `AUDIO_CHANNELS`
-    - Default: 2
-- `AUDIO_DELAYS`: You need to adjust according to the environment.
-    - Default: 1800
-- `THREAD_NUM`: 4 CPU cores is assumed.
-    - Default: 4
+
+* `SCREEN_WIDTH`
+  * Default: 1920
+* `SCREEN_HEIGHT`
+  * Default: 1080
+* `COLOR_DEPTH`
+  * Default: 24
+* `VIDEO_BITRATE`
+  * Default: 4500k
+* `VIDEO_FRAMERATE`
+  * Default: 30
+* `AUDIO_BITRATE`
+  * Default: 128k
+* `AUDIO_SAMPLERATE`
+  * Default: 44100
+* `AUDIO_CHANNELS`
+  * Default: 2
+* `AUDIO_DELAYS`: You need to adjust according to the environment.
+  * Default: 1800
+* `THREAD_NUM`: 4 CPU cores is assumed.
+  * Default: 4
 
 ## Running
 

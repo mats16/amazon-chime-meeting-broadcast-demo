@@ -56,6 +56,7 @@ display = Display(visible=False, size=(screen_width, screen_height), color_depth
 
 options = webdriver.ChromeOptions()
 options.add_argument('--no-sandbox')
+options.add_argument('--disable-dev-shm-usage')
 options.add_argument('--autoplay-policy=no-user-gesture-required')
 options.add_argument(f'---window-size={screen_width},{screen_height}')
 options.add_argument('--start-fullscreen')

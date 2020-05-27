@@ -181,5 +181,5 @@ if __name__=='__main__':
                 Body=f,
                 Bucket=s3_bucket,
                 Key=f'{s3_prefix}/{job_name}.mp4',
-                ContentType='movie/mp4')
+                ContentType='video/mp4')
     sys.exit(0)

@@ -45,7 +45,7 @@ if dst_url.startswith('rtmp://'):
 elif dst_url.startswith('s3://'):
     dst_type = 's3'
     s3_bucket = dst_url.split('/')[2]
-    s3_prefix = '/'.join(dst_url.split('/')[3:]).rstrip('/')
+    s3_key = '/'.join(dst_url.split('/')[3:])
 
 job_name = os.getenv('JOB_NAME', str(uuid.uuid4()))
 
@@ -180,6 +180,6 @@ if __name__=='__main__':
             res = client.put_object(
                 Body=f,
                 Bucket=s3_bucket,
-                Key=f'{s3_prefix}/{job_name}.mp4',
+                Key=s3_key,
                 ContentType='video/mp4')
     sys.exit(0)

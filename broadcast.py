@@ -101,9 +101,11 @@ capabilities['loggingPrefs'] = { 'browser':'ALL' }
 
 
 if __name__=='__main__':
+    logger.info('Launch a virtual display.')
     display.start()
 
     driver = webdriver.Chrome(options=options, desired_capabilities=capabilities)
+    logger.info(f'Open {src_url} .')
     driver.get(src_url)
 
     # Move mouse out of the way so it doesn't trigger the "pause" overlay on the video tile
@@ -175,6 +177,7 @@ if __name__=='__main__':
             threads=thread_num,
             loglevel='error',
         )
+    logger.info('Launch ffpmeg process...')
     ffmpeg_process = out.run_async(pipe_stdin=True)
 
     killer = GracefulKiller(ffmpeg_process)
@@ -188,6 +191,7 @@ if __name__=='__main__':
         # check page crash
         try:
             current_url = driver.current_url
+            logger.info('Browser is not crashed.')
         except WebDriverException as e:
             logger.error(e)
             driver.get(src_url)

@@ -1,7 +1,7 @@
 import sys
 import os
-import logging
-import subprocess
+from logging import getLogger, StreamHandler, DEBUG
+from subprocess import TimeoutExpired
 from time import sleep
 from selenium import webdriver
 from selenium.webdriver.support.expected_conditions import visibility_of_element_located as visible
@@ -13,6 +13,7 @@ import chromedriver_binary
 import ffmpeg
 import uuid
 import boto3
+import signal
 
 screen_width = os.getenv('SCREEN_WIDTH', 1920)
 screen_height = os.getenv('SCREEN_HEIGHT', 1080)
@@ -47,10 +48,43 @@ elif dst_url.startswith('s3://'):
     s3_bucket = dst_url.split('/')[2]
     s3_key = '/'.join(dst_url.split('/')[3:])
 
-job_name = os.getenv('JOB_NAME', str(uuid.uuid4()))
+tmp_file = f'/tmp/{str(uuid.uuid4())}.mp4'  # for Recording
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger = getLogger(__name__)
+handler = StreamHandler()
+handler.setLevel(DEBUG)
+logger.setLevel(DEBUG)
+logger.addHandler(handler)
+logger.propagate = False
+
+class GracefulKiller:
+    kill_now = False
+    def __init__(self, ffmpeg_process):
+        self.ffmpeg_process = ffmpeg_process
+        signal.signal(signal.SIGINT, self.exit_gracefully)
+        signal.signal(signal.SIGTERM, self.exit_gracefully)
+
+    def exit_gracefully(self, signum, frame):
+        logger.info('Start graceful shutdown process...')
+        try:
+            logger.info('Stopping ffmpeg process gracefully...')
+            self.ffmpeg_process.communicate(str.encode('q'), timeout=20)
+            logger.info('Successfully stopped ffmpeg process gracefully.')
+        except TimeoutExpired:
+            logger.warning('Killing ffmpeg process...')
+            ffmpeg_process.terminate()
+            logger.warning('Successfully killed ffmpeg process.')
+        if dst_type == 's3':
+            logger.info('Archive a recording file...')
+            client = boto3.client('s3')
+            with open(tmp_file, 'rb') as f:
+                res = client.put_object(
+                    Body=f,
+                    Bucket=s3_bucket,
+                    Key=s3_key,
+                    ContentType='video/mp4')
+            logger.info(f'Successfully archived a recording file. [s3://{s3_bucket}/{s3_key}]')
+        self.kill_now = True
 
 display = Display(visible=False, size=(screen_width, screen_height), color_depth=color_depth)
 
@@ -117,7 +151,6 @@ if __name__=='__main__':
             loglevel='error',
         )
     elif dst_type == 's3':
-        tmp_file = f'/tmp/{job_name}.mp4'
         out = ffmpeg.output(
             video_stream,
             audio_stream,
@@ -142,45 +175,38 @@ if __name__=='__main__':
             threads=thread_num,
             loglevel='error',
         )
-    process = out.run_async(pipe_stdin=True)
+    ffmpeg_process = out.run_async(pipe_stdin=True)
 
-    while True:
+    killer = GracefulKiller(ffmpeg_process)
+    while not killer.kill_now:
         # check console log
         for entry in driver.get_log('browser'):
-            logger.info(entry)
+            if entry['level'] == 'WARNING':
+                logger.warning(entry)
+            else:
+                logger.info(entry)
         # check page crash
         try:
             current_url = driver.current_url
         except WebDriverException as e:
             logger.error(e)
             driver.get(src_url)
+            logger.info('Successfully reloaded the browser.')
             current_url = src_url
         # check chime meeting status
         if is_chime:
             if current_url == 'https://app.chime.aws/portal/ended':
                 logger.info('This meeting is ended.')
-                break
-            else:
-                try:
-                    title = driver.find_element_by_class_name('FullScreenOverlay__title')
-                except Exception as e:
-                    title = None
-                if title and title.text == 'Meeting ID not found':
-                    logger.info(title.text)
-                    break
+                killer.exit_gracefully(signal.SIGTERM, None)
+            try:
+                title = driver.find_element_by_class_name('FullScreenOverlay__title')
+            except Exception as e:
+                title = None
+            if title and title.text == 'Meeting ID not found':
+                logger.warning(title.text)
+                killer.exit_gracefully(signal.SIGTERM, None)
         sleep(5)
-    try:
-        process.communicate(str.encode('q'), timeout=10)
-    except subprocess.TimeoutExpired:
-        process.terminate()
+
     driver.quit()
     display.stop()
-    if dst_type == 's3':
-        client = boto3.client('s3')
-        with open(tmp_file, 'rb') as f:
-            res = client.put_object(
-                Body=f,
-                Bucket=s3_bucket,
-                Key=s3_key,
-                ContentType='video/mp4')
     sys.exit(0)

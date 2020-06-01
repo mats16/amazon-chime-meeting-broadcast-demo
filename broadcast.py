@@ -166,7 +166,7 @@ if __name__=='__main__':
                 strict='-2',
                 #audio_bitrate=audio_bitrate,
                 ac=audio_channels,
-                ar=8000,  # https://docs.aws.amazon.com/transcribe/latest/dg/input.html
+                ar=audio_samplerate,  # https://docs.aws.amazon.com/transcribe/latest/dg/input.html
                 threads=thread_num,
                 loglevel='error',
             )

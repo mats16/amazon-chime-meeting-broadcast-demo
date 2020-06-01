@@ -48,6 +48,7 @@ elif dst_url.startswith('s3://'):
     dst_type = 's3'
     s3_bucket = dst_url.split('/')[2]
     s3_key = '/'.join(dst_url.split('/')[3:])
+    output_format = dst_url.split('.')[-1]
 
 tmp_file = f'/tmp/{str(uuid.uuid4())}.mp4'  # for Recording
 
@@ -154,25 +155,13 @@ if __name__=='__main__':
             loglevel='error',
         )
     elif dst_type == 's3':
-        if audio_codec == 'flac':
+        if output_format == 'flac':
             out = ffmpeg.output(
-                video_stream,
                 audio_stream,
                 tmp_file,
-                f='mp4',
-                vcodec='libx264',
-                pix_fmt='yuv420p',
-                vprofile='main',
-                preset='veryfast',
-                x264opts='nal-hrd=cbr:no-scenecut',
-                video_bitrate=video_bitrate,
-                #minrate=video_minrate,
-                #maxrate=video_maxrate,
-                #bufsize=video_bufsize,
-                r=video_framerate,
-                g=video_gop,
+                f='flac',
                 filter_complex=f'adelay=delays={audio_delays}|{audio_delays}',
-                acodec=audio_codec,
+                acodec='flac',
                 sample_fmt='s16',
                 strict='-2',
                 audio_bitrate=audio_bitrate,
@@ -186,7 +175,7 @@ if __name__=='__main__':
                 video_stream,
                 audio_stream,
                 tmp_file,
-                f='mp4',
+                f=output_format,
                 vcodec='libx264',
                 pix_fmt='yuv420p',
                 vprofile='main',

@@ -30,7 +30,7 @@ audio_samplerate = os.getenv('AUDIO_SAMPLERATE', 44100)
 audio_channels = os.getenv('AUDIO_CHANNELS', 2)
 audio_delays = os.getenv('AUDIO_DELAYS', '1800')
 thread_num = os.getenv('THREAD_NUM', 4)
-output_format = os.getenv('OUTPUT_FORMAT', 'mp4')
+audio_codec = os.getenv('AUDIO_CODEC', 'aac')
 
 meeting_pin = os.getenv('MEETING_PIN', None)
 if meeting_pin:
@@ -49,7 +49,7 @@ elif dst_url.startswith('s3://'):
     s3_bucket = dst_url.split('/')[2]
     s3_key = '/'.join(dst_url.split('/')[3:])
 
-tmp_file = f'/tmp/{str(uuid.uuid4())}.{output_format}'  # for Recording
+tmp_file = f'/tmp/{str(uuid.uuid4())}.mp4'  # for Recording
 
 logger = getLogger(__name__)
 handler = StreamHandler()
@@ -154,17 +154,12 @@ if __name__=='__main__':
             loglevel='error',
         )
     elif dst_type == 's3':
-        #acodec = 'pcm_s16le' if output_format == 'flac' else 'aac'
-        #if output_format == 'flac':
-        #    pass
-        #else:
-        #    pass
-        if output_format == 'flac':
+        if audio_codec == 'flac':
             out = ffmpeg.output(
                 video_stream,
                 audio_stream,
                 tmp_file,
-                f=output_format,
+                f='mp4',
                 vcodec='libx264',
                 pix_fmt='yuv420p',
                 vprofile='main',
@@ -177,8 +172,9 @@ if __name__=='__main__':
                 r=video_framerate,
                 g=video_gop,
                 filter_complex=f'adelay=delays={audio_delays}|{audio_delays}',
-                acodec='flac',
+                acodec=audio_codec,
                 sample_fmt='s16',
+                strict='-2',
                 audio_bitrate=audio_bitrate,
                 ac=audio_channels,
                 ar=audio_samplerate,
@@ -190,7 +186,7 @@ if __name__=='__main__':
                 video_stream,
                 audio_stream,
                 tmp_file,
-                f=output_format,
+                f='mp4',
                 vcodec='libx264',
                 pix_fmt='yuv420p',
                 vprofile='main',
@@ -203,7 +199,7 @@ if __name__=='__main__':
                 r=video_framerate,
                 g=video_gop,
                 filter_complex=f'adelay=delays={audio_delays}|{audio_delays}',
-                acodec='aac',
+                acodec=audio_codec,
                 audio_bitrate=audio_bitrate,
                 ac=audio_channels,
                 ar=audio_samplerate,

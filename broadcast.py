@@ -30,6 +30,7 @@ audio_samplerate = os.getenv('AUDIO_SAMPLERATE', 44100)
 audio_channels = os.getenv('AUDIO_CHANNELS', 2)
 audio_delays = os.getenv('AUDIO_DELAYS', '1800')
 thread_num = os.getenv('THREAD_NUM', 4)
+output_format = os.getenv('OUTPUT_FORMAT', 'mp4')
 
 meeting_pin = os.getenv('MEETING_PIN', None)
 if meeting_pin:
@@ -48,7 +49,7 @@ elif dst_url.startswith('s3://'):
     s3_bucket = dst_url.split('/')[2]
     s3_key = '/'.join(dst_url.split('/')[3:])
 
-tmp_file = f'/tmp/{str(uuid.uuid4())}.mp4'  # for Recording
+tmp_file = f'/tmp/{str(uuid.uuid4())}.{output_format}'  # for Recording
 
 logger = getLogger(__name__)
 handler = StreamHandler()
@@ -153,30 +154,63 @@ if __name__=='__main__':
             loglevel='error',
         )
     elif dst_type == 's3':
-        out = ffmpeg.output(
-            video_stream,
-            audio_stream,
-            tmp_file,
-            f='mp4',
-            vcodec='libx264',
-            pix_fmt='yuv420p',
-            vprofile='main',
-            preset='veryfast',
-            x264opts='nal-hrd=cbr:no-scenecut',
-            video_bitrate=video_bitrate,
-            #minrate=video_minrate,
-            #maxrate=video_maxrate,
-            #bufsize=video_bufsize,
-            r=video_framerate,
-            g=video_gop,
-            filter_complex=f'adelay=delays={audio_delays}|{audio_delays}',
-            acodec='aac',
-            audio_bitrate=audio_bitrate,
-            ac=audio_channels,
-            ar=audio_samplerate,
-            threads=thread_num,
-            loglevel='error',
-        )
+        #acodec = 'pcm_s16le' if output_format == 'flac' else 'aac'
+        #if output_format == 'flac':
+        #    pass
+        #else:
+        #    pass
+        if output_format == 'flac':
+            out = ffmpeg.output(
+                video_stream,
+                audio_stream,
+                tmp_file,
+                f=output_format,
+                vcodec='libx264',
+                pix_fmt='yuv420p',
+                vprofile='main',
+                preset='veryfast',
+                x264opts='nal-hrd=cbr:no-scenecut',
+                video_bitrate=video_bitrate,
+                #minrate=video_minrate,
+                #maxrate=video_maxrate,
+                #bufsize=video_bufsize,
+                r=video_framerate,
+                g=video_gop,
+                filter_complex=f'adelay=delays={audio_delays}|{audio_delays}',
+                acodec='flac',
+                sample_fmt='s16',
+                audio_bitrate=audio_bitrate,
+                ac=audio_channels,
+                ar=audio_samplerate,
+                threads=thread_num,
+                loglevel='error',
+            )
+        else:
+            out = ffmpeg.output(
+                video_stream,
+                audio_stream,
+                tmp_file,
+                f=output_format,
+                vcodec='libx264',
+                pix_fmt='yuv420p',
+                vprofile='main',
+                preset='veryfast',
+                x264opts='nal-hrd=cbr:no-scenecut',
+                video_bitrate=video_bitrate,
+                #minrate=video_minrate,
+                #maxrate=video_maxrate,
+                #bufsize=video_bufsize,
+                r=video_framerate,
+                g=video_gop,
+                filter_complex=f'adelay=delays={audio_delays}|{audio_delays}',
+                acodec='aac',
+                audio_bitrate=audio_bitrate,
+                ac=audio_channels,
+                ar=audio_samplerate,
+                threads=thread_num,
+                loglevel='error',
+            )
+    logger.info(out)
     logger.info('Launch ffpmeg process...')
     ffmpeg_process = out.run_async(pipe_stdin=True)
 

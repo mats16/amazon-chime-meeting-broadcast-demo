@@ -34,6 +34,9 @@ The input for the container is a file called `container.env`. You create this fi
   * Default: 4500k
 * `VIDEO_FRAMERATE`
   * Default: 30
+* `AUDIO_CODEC`
+  * Default: aac
+  * You can use flac, but flac in MP4 support is experimental.
 * `AUDIO_BITRATE`
   * Default: 128k
 * `AUDIO_SAMPLERATE`

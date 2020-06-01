@@ -25,12 +25,12 @@ video_bitrate = os.getenv('VIDEO_BITRATE', '4500k')
 #video_bufsize = os.getenv('VIDEO_BUFSIZE', '12000k')
 video_framerate = os.getenv('VIDEO_FRAMERATE', 30)
 video_gop = video_framerate * 2
+audio_codec = os.getenv('AUDIO_CODEC', 'aac')
 audio_bitrate = os.getenv('AUDIO_BITRATE', '128k')
 audio_samplerate = os.getenv('AUDIO_SAMPLERATE', 44100)
 audio_channels = os.getenv('AUDIO_CHANNELS', 2)
 audio_delays = os.getenv('AUDIO_DELAYS', '1800')
 thread_num = os.getenv('THREAD_NUM', 4)
-audio_codec = os.getenv('AUDIO_CODEC', 'aac')
 
 meeting_pin = os.getenv('MEETING_PIN', None)
 if meeting_pin:

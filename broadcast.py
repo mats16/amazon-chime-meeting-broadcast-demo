@@ -29,7 +29,7 @@ audio_codec = os.getenv('AUDIO_CODEC', 'aac')
 audio_bitrate = os.getenv('AUDIO_BITRATE', '128k')
 audio_samplerate = os.getenv('AUDIO_SAMPLERATE', 44100)
 audio_channels = os.getenv('AUDIO_CHANNELS', 2)
-audio_delays = os.getenv('AUDIO_DELAYS', '1800')
+audio_delays = os.getenv('AUDIO_DELAYS', '2000')
 thread_num = os.getenv('THREAD_NUM', 4)
 
 meeting_pin = os.getenv('MEETING_PIN', None)
@@ -118,6 +118,9 @@ if __name__=='__main__':
     video_stream = ffmpeg.input(
         f':{display.display}',
         f='x11grab',
+        s=screen_resolution,
+        r=video_framerate,
+        draw_mouse=0,
         thread_queue_size=1024)
 
     audio_stream = ffmpeg.input(
@@ -133,7 +136,6 @@ if __name__=='__main__':
             dst_url,
             f='flv',
             loglevel='error',
-                draw_mouse=0,
                 threads=thread_num,
             vcodec='libx264',
                 pix_fmt='yuv420p',
@@ -144,8 +146,6 @@ if __name__=='__main__':
                 #minrate=video_minrate,
                 #maxrate=video_maxrate,
                 #bufsize=video_bufsize,
-                s=screen_resolution,
-                r=video_framerate,
                 g=video_gop,
             audio_sync=100,
             filter_complex=f'adelay=delays={audio_delays}|{audio_delays}',
@@ -161,7 +161,6 @@ if __name__=='__main__':
                 tmp_file,
                 f='flac',
                 loglevel='error',
-                    draw_mouse=0,
                     threads=thread_num,
                 filter_complex=f'adelay=delays={audio_delays}|{audio_delays}',
                 acodec='flac',
@@ -178,7 +177,6 @@ if __name__=='__main__':
                 tmp_file,
                 f=output_format,
                 loglevel='error',
-                    draw_mouse=0,
                     threads=thread_num,
                 vcodec='libx264',
                     pix_fmt='yuv420p',
@@ -189,8 +187,6 @@ if __name__=='__main__':
                     #minrate=video_minrate,
                     #maxrate=video_maxrate,
                     #bufsize=video_bufsize,
-                    s=screen_resolution,
-                    r=video_framerate,
                     g=video_gop,
                 audio_sync=100,
                 filter_complex=f'adelay=delays={audio_delays}|{audio_delays}',

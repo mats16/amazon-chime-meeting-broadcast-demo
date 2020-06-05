@@ -1,4 +1,5 @@
 boto3==1.13.16
-ffmpeg-python==0.2.0
+#ffmpeg-python==0.2.0
+git+https://github.com/mats16/ffmpeg-python.git
 PyVirtualDisplay==0.2.5
 selenium==3.141.0

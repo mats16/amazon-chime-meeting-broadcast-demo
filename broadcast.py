@@ -24,6 +24,7 @@ video_bitrate = os.getenv('VIDEO_BITRATE', '4500k')
 #video_maxrate = os.getenv('VIDEO_MAXRATE', '6000k')
 #video_bufsize = os.getenv('VIDEO_BUFSIZE', '12000k')
 video_framerate = os.getenv('VIDEO_FRAMERATE', 30)
+filter_framerate = round(video_framerate / 1.001, 2)
 video_gop = video_framerate * 2
 audio_codec = os.getenv('AUDIO_CODEC', 'aac')
 audio_bitrate = os.getenv('AUDIO_BITRATE', '128k')
@@ -121,7 +122,7 @@ if __name__=='__main__':
         s=screen_resolution,
         r=video_framerate,
         draw_mouse=0,
-        thread_queue_size=1024)
+        thread_queue_size=1024).filter('fps', fps=filter_framerate, round='up')
 
     audio_stream = ffmpeg.input(
         'default',

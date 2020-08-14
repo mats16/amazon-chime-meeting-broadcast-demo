@@ -43,15 +43,14 @@ if src_url.startswith('https://app.chime.aws/portal/'):
 else:
     is_chime = False
 dst_url = os.getenv('DST_URL')
-if dst_url.startswith('rtmp://'):
-    dst_type = 'rtmp'
-elif dst_url.startswith('s3://'):
+if dst_url.startswith('s3://'):
     dst_type = 's3'
     s3_bucket = dst_url.split('/')[2]
     s3_key = '/'.join(dst_url.split('/')[3:])
     output_format = dst_url.split('.')[-1]
-
-tmp_file = f'/tmp/{str(uuid.uuid4())}.mp4'  # for Recording
+    tmp_file = f'/tmp/{str(uuid.uuid4())}.mp4'  # for Recording
+else:
+    dst_type = 'rtmp'  # not used
 
 logger = getLogger(__name__)
 handler = StreamHandler()
@@ -130,32 +129,7 @@ if __name__=='__main__':
         ac=2,
         thread_queue_size=1024)
 
-    if dst_type == 'rtmp':
-        out = ffmpeg.output(
-            video_stream,
-            audio_stream,
-            dst_url,
-            f='flv',
-            loglevel='error',
-                threads=thread_num,
-            vcodec='libx264',
-                pix_fmt='yuv420p',
-                vprofile='main',
-                preset='veryfast',
-                x264opts='nal-hrd=cbr:no-scenecut',
-                video_bitrate=video_bitrate,
-                #minrate=video_minrate,
-                #maxrate=video_maxrate,
-                #bufsize=video_bufsize,
-                g=video_gop,
-            audio_sync=100,
-            filter_complex=f'adelay=delays={audio_delays}|{audio_delays}',
-            acodec='aac',
-                audio_bitrate=audio_bitrate,
-                ac=audio_channels,
-                ar=audio_samplerate,
-        )
-    elif dst_type == 's3':
+    if dst_type == 's3':
         if output_format == 'flac':
             out = ffmpeg.output(
                 audio_stream,
@@ -196,6 +170,31 @@ if __name__=='__main__':
                     ac=audio_channels,
                     ar=audio_samplerate,
             )
+    else:
+        out = ffmpeg.output(
+            video_stream,
+            audio_stream,
+            dst_url,
+            f='flv',
+            loglevel='error',
+                threads=thread_num,
+            vcodec='libx264',
+                pix_fmt='yuv420p',
+                vprofile='main',
+                preset='veryfast',
+                x264opts='nal-hrd=cbr:no-scenecut',
+                video_bitrate=video_bitrate,
+                #minrate=video_minrate,
+                #maxrate=video_maxrate,
+                #bufsize=video_bufsize,
+                g=video_gop,
+            audio_sync=100,
+            filter_complex=f'adelay=delays={audio_delays}|{audio_delays}',
+            acodec='aac',
+                audio_bitrate=audio_bitrate,
+                ac=audio_channels,
+                ar=audio_samplerate,
+        )
     out = out.overwrite_output()
     logger.info(out.compile())
     logger.info('Launch ffpmeg process...')

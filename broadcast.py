@@ -128,17 +128,20 @@ if __name__=='__main__':
     actions.perform()
 
     wait = WebDriverWait(driver, 5)
-
-    if src_type == 'chime_portal':
-        wait.until(visibility_of_element_located((By.CSS_SELECTOR, '.MeetingCanvas')))
-    elif src_type == 'chime_webclient':
-        wait.until(visibility_of_element_located((By.CSS_SELECTOR, '.InputBox.AnonymousJoinContainer__nameFieldInputBox')))
-        input_box = driver.find_element_by_xpath("//div[@class='InputBox AnonymousJoinContainer__nameFieldInputBox']/div/input")
-        input_box.send_keys(bot_name)
-        next_button = driver.find_element_by_css_selector('.Button.Button__primary.AnonymousJoinContainer__nextButton')
-        next_button.click()
-        #audio_button = wait.until(visibility_of_element_located((By.CSS_SELECTOR, '.AudioSelectModalContainer__voipButton')))
-        #audio_button.click()
+    try:
+        if src_type == 'chime_portal':
+            wait.until(visibility_of_element_located((By.CSS_SELECTOR, '.MeetingCanvas')))
+        elif src_type == 'chime_webclient':
+            wait.until(visibility_of_element_located((By.CSS_SELECTOR, '.InputBox.AnonymousJoinContainer__nameFieldInputBox')))
+            input_box = driver.find_element_by_xpath("//div[@class='InputBox AnonymousJoinContainer__nameFieldInputBox']/div/input")
+            input_box.send_keys(bot_name)
+            next_button = driver.find_element_by_css_selector('.Button.Button__primary.AnonymousJoinContainer__nextButton')
+            next_button.click()
+            audio_button = wait.until(visibility_of_element_located((By.CSS_SELECTOR, '.AudioSelectModalContainer__voipButton')))
+            audio_button.click()
+    except Exception as e:
+        logger.info(e)
+        sys.exit(0)
     
     video_stream = ffmpeg.input(
         f':{display.display}',

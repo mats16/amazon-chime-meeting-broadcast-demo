@@ -137,8 +137,8 @@ if __name__=='__main__':
         input_box.send_keys(bot_name)
         next_button = driver.find_element_by_css_selector('.Button.Button__primary.AnonymousJoinContainer__nextButton')
         next_button.click()
-        audio_button = wait.until(visibility_of_element_located((By.CSS_SELECTOR, '.AudioSelectModalContainer__voipButton')))
-        audio_button.click()
+        #audio_button = wait.until(visibility_of_element_located((By.CSS_SELECTOR, '.AudioSelectModalContainer__voipButton')))
+        #audio_button.click()
     
     video_stream = ffmpeg.input(
         f':{display.display}',

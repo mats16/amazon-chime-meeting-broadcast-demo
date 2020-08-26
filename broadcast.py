@@ -127,15 +127,17 @@ if __name__=='__main__':
     actions.move_by_offset(0, screen_height-1)
     actions.perform()
 
+    wait = WebDriverWait(driver, 5)
+
     if src_type == 'chime_portal':
-        WebDriverWait(driver, 5).until(visibility_of_element_located((By.CSS_SELECTOR, '.MeetingCanvas')))
+        wait.until(visibility_of_element_located((By.CSS_SELECTOR, '.MeetingCanvas')))
     elif src_type == 'chime_webclient':
-        WebDriverWait(driver, 5).until(visibility_of_element_located((By.CSS_SELECTOR, '.InputBox.AnonymousJoinContainer__nameFieldInputBox')))
+        wait.until(visibility_of_element_located((By.CSS_SELECTOR, '.InputBox.AnonymousJoinContainer__nameFieldInputBox')))
         input_box = driver.find_elements_by_class_name('Input')[1]
         input_box.send_keys(bot_name)
         next_button = driver.find_element_by_css_selector('.Button.Button__primary.AnonymousJoinContainer__nextButton')
         next_button.click()
-        audio_button = driver.find_element_by_css_selector('.AudioSelectModalContainer__voipButton')
+        audio_button = wait.until(visibility_of_element_located((By.CSS_SELECTOR, '.AudioSelectModalContainer__voipButton')))
         audio_button.click()
     
     video_stream = ffmpeg.input(

@@ -133,7 +133,7 @@ if __name__=='__main__':
         wait.until(visibility_of_element_located((By.CSS_SELECTOR, '.MeetingCanvas')))
     elif src_type == 'chime_webclient':
         wait.until(visibility_of_element_located((By.CSS_SELECTOR, '.InputBox.AnonymousJoinContainer__nameFieldInputBox')))
-        input_box = driver.find_elements_by_class_name('Input')[1]
+        input_box = driver.find_element_by_xpath("//div[@class='InputBox AnonymousJoinContainer__nameFieldInputBox']/div/input")
         input_box.send_keys(bot_name)
         next_button = driver.find_element_by_css_selector('.Button.Button__primary.AnonymousJoinContainer__nextButton')
         next_button.click()

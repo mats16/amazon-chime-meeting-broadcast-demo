@@ -124,7 +124,7 @@ if __name__=='__main__':
 
     # Move mouse out of the way so it doesn't trigger the "pause" overlay on the video tile
     actions = ActionChains(driver)
-    actions.move_by_offset(0, screen_height-1)
+    actions.move_by_offset(0, int(screen_height) - 1)
     actions.perform()
 
     wait = WebDriverWait(driver, 5)

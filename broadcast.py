@@ -4,8 +4,10 @@ from logging import getLogger, StreamHandler, DEBUG
 from subprocess import TimeoutExpired
 from time import sleep
 from selenium import webdriver
-from selenium.webdriver.support.expected_conditions import visibility_of_element_located as visible
+from selenium.webdriver.support.expected_conditions import visibility_of_element_located
+from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.common.by import By
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 from selenium.common.exceptions import WebDriverException
 from pyvirtualdisplay import Display
@@ -33,15 +35,21 @@ audio_channels = os.getenv('AUDIO_CHANNELS', 2)
 audio_delays = os.getenv('AUDIO_DELAYS', '2000')
 thread_num = os.getenv('THREAD_NUM', 4)
 
+bot_name = os.getenv('BOT_NAME', 'Bot')
+
 meeting_pin = os.getenv('MEETING_PIN', None)
 if meeting_pin:
     src_url = f'https://app.chime.aws/portal/{meeting_pin}'
 else:
     src_url = os.getenv('SRC_URL')
+
 if src_url.startswith('https://app.chime.aws/portal/'):
-    is_chime = True
+    src_type = 'chime_portal'
+elif src_url.startswith('https://chime.aws/') or src_url.startswith('https://app.chime.aws/meetings/'):
+    src_type = 'chime_webclient'
 else:
-    is_chime = False
+    src_type = 'none'
+
 dst_url = os.getenv('DST_URL')
 if dst_url.startswith('s3://'):
     dst_type = 's3'
@@ -50,7 +58,7 @@ if dst_url.startswith('s3://'):
     output_format = dst_url.split('.')[-1]
     tmp_file = f'/tmp/{str(uuid.uuid4())}.mp4'  # for Recording
 else:
-    dst_type = 'rtmp'  # not used
+    dst_type = 'none'  # not used
 
 logger = getLogger(__name__)
 handler = StreamHandler()
@@ -94,9 +102,13 @@ options = webdriver.ChromeOptions()
 options.add_argument('--no-sandbox')
 options.add_argument('--disable-dev-shm-usage')
 options.add_argument('--autoplay-policy=no-user-gesture-required')
-options.add_argument(f'---window-size={screen_width},{screen_height}')
+options.add_argument(f'--window-size={screen_width},{screen_height}')
 options.add_argument('--start-fullscreen')
 options.add_experimental_option("excludeSwitches", ['enable-automation'])
+options.add_experimental_option("prefs", {
+    "protocol_handler.allowed_origin_protocol_pairs": {"https://app.chime.aws": {"chime": True} },
+    "profile.default_content_setting_values.notifications": 1
+})
 
 capabilities = DesiredCapabilities.CHROME
 capabilities['loggingPrefs'] = { 'browser':'ALL' }
@@ -114,6 +126,22 @@ if __name__=='__main__':
     actions = ActionChains(driver)
     actions.move_by_offset(0, screen_height-1)
     actions.perform()
+
+    wait = WebDriverWait(driver, 5)
+    try:
+        if src_type == 'chime_portal':
+            wait.until(visibility_of_element_located((By.CSS_SELECTOR, '.MeetingCanvas')))
+        elif src_type == 'chime_webclient':
+            wait.until(visibility_of_element_located((By.CSS_SELECTOR, '.InputBox.AnonymousJoinContainer__nameFieldInputBox')))
+            input_box = driver.find_element_by_xpath("//div[@class='InputBox AnonymousJoinContainer__nameFieldInputBox']/div/input")
+            input_box.send_keys(bot_name)
+            next_button = driver.find_element_by_css_selector('.Button.Button__primary.AnonymousJoinContainer__nextButton')
+            next_button.click()
+            audio_button = wait.until(visibility_of_element_located((By.CSS_SELECTOR, '.AudioSelectModalContainer__voipButton')))
+            audio_button.click()
+    except Exception as e:
+        logger.info(e)
+        sys.exit(0)
     
     video_stream = ffmpeg.input(
         f':{display.display}',
@@ -218,16 +246,24 @@ if __name__=='__main__':
             logger.info('Successfully reloaded the browser.')
             current_url = src_url
         # check chime meeting status
-        if is_chime:
+        if src_type == 'chime_portal':
             if current_url == 'https://app.chime.aws/portal/ended':
                 logger.info('This meeting is ended.')
                 killer.exit_gracefully(signal.SIGTERM, None)
+            #try:
+            #    title = driver.find_element_by_class_name('FullScreenOverlay__title')
+            #except Exception as e:
+            #    title = None
+            #if title and title.text == 'Meeting ID not found':
+            #    logger.warning(title.text)
+            #    killer.exit_gracefully(signal.SIGTERM, None)
+        elif src_type == 'chime_webclient':
             try:
-                title = driver.find_element_by_class_name('FullScreenOverlay__title')
+                end_container = driver.find_element_by_class_name('MeetingEndContainer')
             except Exception as e:
-                title = None
-            if title and title.text == 'Meeting ID not found':
-                logger.warning(title.text)
+                end_container = None
+            if end_container:
+                logger.info('This meeting is ended.')
                 killer.exit_gracefully(signal.SIGTERM, None)
         sleep(5)
 

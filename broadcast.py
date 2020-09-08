@@ -51,14 +51,12 @@ else:
     src_type = 'none'
 
 dst_url = os.getenv('DST_URL')
-if dst_url.startswith('s3://'):
-    dst_type = 's3'
+dst_type = dst_url.split('://')[0]
+if dst_type == 's3':
     s3_bucket = dst_url.split('/')[2]
     s3_key = '/'.join(dst_url.split('/')[3:])
     output_format = dst_url.split('.')[-1]
     tmp_file = f'/tmp/{str(uuid.uuid4())}.mp4'  # for Recording
-else:
-    dst_type = 'none'  # not used
 
 logger = getLogger(__name__)
 handler = StreamHandler()
@@ -105,16 +103,20 @@ options.add_argument('--autoplay-policy=no-user-gesture-required')
 options.add_argument(f'--window-size={screen_width},{screen_height}')
 options.add_argument('--start-fullscreen')
 options.add_experimental_option("excludeSwitches", ['enable-automation'])
-options.add_experimental_option("prefs", {
-    "protocol_handler.allowed_origin_protocol_pairs": {"https://app.chime.aws": {"chime": True} },
-    "profile.default_content_setting_values.notifications": 1
-})
+if src_type == 'chime_webclient':
+    options.add_argument('--use-fake-device-for-media-stream')
+    options.add_experimental_option("prefs", {
+        "protocol_handler.allowed_origin_protocol_pairs": {"https://app.chime.aws": {"chime": True} },
+        "profile.default_content_setting_values.media_stream_mic": 1,
+        "profile.default_content_setting_values.notifications": 2
+    })
 
 capabilities = DesiredCapabilities.CHROME
 capabilities['loggingPrefs'] = { 'browser':'ALL' }
 
 
 if __name__=='__main__':
+    logger.info(f'Params: {{"src_type": "{src_type}", "dst_type": "{dst_type}"}}')
     logger.info('Launch a virtual display.')
     display.start()
 
@@ -124,25 +126,30 @@ if __name__=='__main__':
 
     # Move mouse out of the way so it doesn't trigger the "pause" overlay on the video tile
     actions = ActionChains(driver)
-    actions.move_by_offset(0, screen_height-1)
+    actions.move_by_offset(0, int(screen_height) - 1)
     actions.perform()
 
     wait = WebDriverWait(driver, 5)
-    try:
-        if src_type == 'chime_portal':
-            wait.until(visibility_of_element_located((By.CSS_SELECTOR, '.MeetingCanvas')))
-        elif src_type == 'chime_webclient':
+    if src_type == 'chime_portal':
+        wait.until(visibility_of_element_located((By.CSS_SELECTOR, '.MeetingCanvas')))
+    elif src_type == 'chime_webclient':
+        try:
             wait.until(visibility_of_element_located((By.CSS_SELECTOR, '.InputBox.AnonymousJoinContainer__nameFieldInputBox')))
+            # Modify Bot Name
             input_box = driver.find_element_by_xpath("//div[@class='InputBox AnonymousJoinContainer__nameFieldInputBox']/div/input")
             input_box.send_keys(bot_name)
             next_button = driver.find_element_by_css_selector('.Button.Button__primary.AnonymousJoinContainer__nextButton')
             next_button.click()
+            # Enable Audio Devices
             audio_button = wait.until(visibility_of_element_located((By.CSS_SELECTOR, '.AudioSelectModalContainer__voipButton')))
             audio_button.click()
-    except Exception as e:
-        logger.info(e)
-        sys.exit(0)
-    
+            # Mute Fake Audio Input
+            mute_button = wait.until(visibility_of_element_located((By.CSS_SELECTOR, '.MeetingControlButton.MeetingControlButton--micActive')))
+            mute_button.click()
+        except Exception as e:
+            logger.info(e)
+            sys.exit(0)
+
     video_stream = ffmpeg.input(
         f':{display.display}',
         f='x11grab',
@@ -250,13 +257,6 @@ if __name__=='__main__':
             if current_url == 'https://app.chime.aws/portal/ended':
                 logger.info('This meeting is ended.')
                 killer.exit_gracefully(signal.SIGTERM, None)
-            #try:
-            #    title = driver.find_element_by_class_name('FullScreenOverlay__title')
-            #except Exception as e:
-            #    title = None
-            #if title and title.text == 'Meeting ID not found':
-            #    logger.warning(title.text)
-            #    killer.exit_gracefully(signal.SIGTERM, None)
         elif src_type == 'chime_webclient':
             try:
                 end_container = driver.find_element_by_class_name('MeetingEndContainer')

@@ -148,7 +148,7 @@ if __name__=='__main__':
             mute_button.click()
         except Exception as e:
             logger.info(e)
-            sys.exit(0)
+            sys.exit(1)
 
     video_stream = ffmpeg.input(
         f':{display.display}',

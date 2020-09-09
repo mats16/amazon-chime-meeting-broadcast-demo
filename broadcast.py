@@ -16,6 +16,7 @@ import ffmpeg
 import uuid
 import boto3
 import signal
+from retry import retry
 
 screen_width = os.getenv('SCREEN_WIDTH', 1920)
 screen_height = os.getenv('SCREEN_HEIGHT', 1080)
@@ -114,6 +115,34 @@ if src_type == 'chime_webclient':
 capabilities = DesiredCapabilities.CHROME
 capabilities['loggingPrefs'] = { 'browser':'ALL' }
 
+@retry(tries=3)
+def connect_chime_portal(webdriver, url):
+    wait = WebDriverWait(webdriver, 5)
+    logger.info(f'Open {src_url} .')
+    webdriver.get(src_url)
+    wait.until(visibility_of_element_located((By.CSS_SELECTOR, '.MeetingCanvas')))
+    # Move mouse out of the way so it doesn't trigger the "pause" overlay on the video tile
+    actions = ActionChains(webdriver)
+    actions.move_by_offset(0, int(screen_height) - 1)
+    actions.perform()
+
+@retry(tries=3)
+def connect_chime_webclient(webdriver, url):
+    wait = WebDriverWait(webdriver, 5)
+    logger.info(f'Open {src_url} .')
+    webdriver.get(src_url)
+    wait.until(visibility_of_element_located((By.CSS_SELECTOR, '.InputBox.AnonymousJoinContainer__nameFieldInputBox')))
+    # Modify Bot Name
+    input_box = webdriver.find_element_by_xpath("//div[@class='InputBox AnonymousJoinContainer__nameFieldInputBox']/div/input")
+    input_box.send_keys(bot_name)
+    next_button = webdriver.find_element_by_css_selector('.Button.Button__primary.AnonymousJoinContainer__nextButton')
+    next_button.click()
+    # Enable Audio Devices
+    audio_button = wait.until(visibility_of_element_located((By.CSS_SELECTOR, '.AudioSelectModalContainer__voipButton')))
+    audio_button.click()
+    # Mute Fake Audio Input
+    mute_button = wait.until(visibility_of_element_located((By.CSS_SELECTOR, '.MeetingControlButton.MeetingControlButton--micActive')))
+    mute_button.click()
 
 if __name__=='__main__':
     logger.info(f'Params: {{"src_type": "{src_type}", "dst_type": "{dst_type}"}}')
@@ -121,34 +150,11 @@ if __name__=='__main__':
     display.start()
 
     driver = webdriver.Chrome(options=options, desired_capabilities=capabilities)
-    logger.info(f'Open {src_url} .')
-    driver.get(src_url)
 
-    # Move mouse out of the way so it doesn't trigger the "pause" overlay on the video tile
-    actions = ActionChains(driver)
-    actions.move_by_offset(0, int(screen_height) - 1)
-    actions.perform()
-
-    wait = WebDriverWait(driver, 5)
     if src_type == 'chime_portal':
-        wait.until(visibility_of_element_located((By.CSS_SELECTOR, '.MeetingCanvas')))
+        connect_chime_portal(driver, src_url)
     elif src_type == 'chime_webclient':
-        try:
-            wait.until(visibility_of_element_located((By.CSS_SELECTOR, '.InputBox.AnonymousJoinContainer__nameFieldInputBox')))
-            # Modify Bot Name
-            input_box = driver.find_element_by_xpath("//div[@class='InputBox AnonymousJoinContainer__nameFieldInputBox']/div/input")
-            input_box.send_keys(bot_name)
-            next_button = driver.find_element_by_css_selector('.Button.Button__primary.AnonymousJoinContainer__nextButton')
-            next_button.click()
-            # Enable Audio Devices
-            audio_button = wait.until(visibility_of_element_located((By.CSS_SELECTOR, '.AudioSelectModalContainer__voipButton')))
-            audio_button.click()
-            # Mute Fake Audio Input
-            mute_button = wait.until(visibility_of_element_located((By.CSS_SELECTOR, '.MeetingControlButton.MeetingControlButton--micActive')))
-            mute_button.click()
-        except Exception as e:
-            logger.info(e)
-            sys.exit(0)
+        connect_chime_webclient(driver, src_url)
 
     video_stream = ffmpeg.input(
         f':{display.display}',
